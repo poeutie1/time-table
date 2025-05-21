@@ -38,6 +38,7 @@ model Course {
   title      String
   dayOfWeek  Int          // 0=日曜…6=土曜
   period     Int          // 時限番号
+  credits    Int          @default(2)
   createdAt  DateTime     @default(now())
   coursesTags CourseTag[]
 }
@@ -49,6 +50,7 @@ model Tag {
   name       String
   createdAt  DateTime     @default(now())
   coursesTags CourseTag[]
+  @@unique([userId, name])
 }
 
 model CourseTag {

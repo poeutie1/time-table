@@ -1,47 +1,71 @@
+// src/app/api/courses/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/courses — ログインユーザの授業一覧を返す
-
-export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // 必ず user.id があると信じるなら non-null assertion で !
-  const userId = session.user.id!;
-  const courses = await prisma.course.findMany({
-    where: { userId: session.user.id },
-    orderBy: { dayOfWeek: "asc" },
-  });
-  return NextResponse.json(courses);
-}
-
-// POST /api/courses — ボディで渡された授業を作成
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  // 1) JWT から userId を取り出し
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: false,
+  });
+  if (!token?.sub) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = token.sub;
 
-  const { title, dayOfWeek, period } = await request.json();
-  if (!title || dayOfWeek == null || period == null) {
+  // 2) ボディを parse & バリデーション
+  const { title, dayOfWeek, period, credits, tags } = await request.json();
+  if (
+    !title ||
+    dayOfWeek == null ||
+    period == null ||
+    credits == null ||
+    !Array.isArray(tags)
+  ) {
     return NextResponse.json(
-      { error: "title, dayOfWeek, period are required" },
+      { error: "title, dayOfWeek, period, credits, tags[] are required" },
       { status: 400 }
     );
   }
 
-  const newCourse = await prisma.course.create({
-    data: {
-      userId: session.user.id,
-      title,
-      dayOfWeek,
-      period,
-    },
+  // 3) トランザクションでまとめて作成
+  const course = await prisma.$transaction(async (tx) => {
+    // 3-1: 授業レコードを作成
+    const newCourse = await tx.course.create({
+      data: { userId, title, dayOfWeek, period, credits },
+    });
+
+    // 3-2: タグを upsert して、Tag レコードを取得
+    const tagRecords = await Promise.all(
+      tags.map((name: string) =>
+        tx.tag.upsert({
+          where: { userId_name: { userId, name } },
+          create: { userId, name },
+          update: {},
+        })
+      )
+    );
+
+    // 3-3: 中間テーブルに紐付け
+    await Promise.all(
+      tagRecords.map((tag) =>
+        tx.courseTag.create({
+          data: { courseId: newCourse.id, tagId: tag.id },
+        })
+      )
+    );
+
+    return newCourse;
   });
-  return NextResponse.json(newCourse, { status: 201 });
+
+  // 4) フロント向けに tags をそのまま文字列配列で返却
+  return NextResponse.json(
+    {
+      ...course,
+      tags, // リクエストで渡した順序そのまま
+    },
+    { status: 201 }
+  );
 }

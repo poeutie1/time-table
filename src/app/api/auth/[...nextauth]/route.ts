@@ -13,7 +13,12 @@ export const authOptions = {
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
-
+  session: {
+    strategy: "jwt" as const,
+  },
+  jwt: {
+    secret: process.env.NEXTAUTH_SECRET,
+  },
   // ここから ↓
   cookies: {
     sessionToken: {
