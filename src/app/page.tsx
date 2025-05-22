@@ -4,6 +4,7 @@
 import { useSession } from "next-auth/react";
 import AuthButton from "@/components/AuthButton";
 import CourseForm from "@/components/CourseForm";
+import Link from "next/link";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -24,6 +25,9 @@ export default function HomePage() {
       ) : (
         <p>授業データを見るには、まずログインしてください。</p>
       )}
+      <Link href="/units" className="text-blue-600 underline">
+        単位計算ページへ
+      </Link>
     </main>
   );
 }

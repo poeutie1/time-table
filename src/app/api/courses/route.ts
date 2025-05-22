@@ -69,3 +69,70 @@ export async function POST(request: NextRequest) {
     { status: 201 }
   );
 }
+export async function GET(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: false,
+  });
+
+  if (!token?.sub) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = token.sub;
+
+  const courses = await prisma.course.findMany({
+    where: { userId },
+    include: {
+      coursesTags: {
+        include: { tag: true },
+      },
+    },
+  });
+
+  // タグを name だけの配列に変換して返す
+  const formatted = courses.map((course) => ({
+    id: course.id,
+    title: course.title,
+    dayOfWeek: course.dayOfWeek,
+    period: course.period,
+    credits: course.credits,
+    tags: course.coursesTags.map((ct) => ct.tag.name),
+  }));
+
+  return NextResponse.json(formatted);
+}
+export async function DELETE(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: false,
+  });
+  if (!token?.sub) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = token.sub;
+
+  const { searchParams } = new URL(request.url);
+  const courseId = searchParams.get("id");
+
+  if (!courseId) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  }
+
+  // ユーザに属する授業のみ削除可能にする
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+  });
+
+  if (!course || course.userId !== userId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  await prisma.course.delete({
+    where: { id: courseId },
+  });
+
+  return NextResponse.json({ success: true });
+}
