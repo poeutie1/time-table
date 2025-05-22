@@ -130,6 +130,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  await prisma.courseTag.deleteMany({
+    where: { courseId },
+  });
+
+  // 🔻 2. 授業を削除
   await prisma.course.delete({
     where: { id: courseId },
   });
