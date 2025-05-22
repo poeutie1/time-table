@@ -20,6 +20,7 @@ export default function UnitsPage() {
   const [inputTag, setInputTag] = useState("");
   const [inputCredits, setInputCredits] = useState(0);
 
+  // 🔽 授業一覧を取得
   useEffect(() => {
     fetch("/api/courses", { credentials: "include" })
       .then((res) => res.json())
@@ -27,7 +28,24 @@ export default function UnitsPage() {
       .catch((err) => console.error("授業取得失敗:", err));
   }, []);
 
-  // 現在の取得単位をタグごとに集計
+  // 🔽 初回のみ localStorage から復元
+  useEffect(() => {
+    const saved = localStorage.getItem("graduation-requirements");
+
+    if (saved) {
+      setRequirements(JSON.parse(saved));
+    }
+  }, []);
+
+  // 🔽 requirements が変わるたびに localStorage に保存
+  useEffect(() => {
+    localStorage.setItem(
+      "graduation-requirements",
+      JSON.stringify(requirements)
+    );
+  }, [requirements]);
+
+  // 🔽 タグごとの取得単位を集計
   const tagCreditsMap: Record<string, number> = {};
   for (const course of courses) {
     for (const tag of course.tags) {
@@ -35,6 +53,7 @@ export default function UnitsPage() {
     }
   }
 
+  // 🔽 要件の追加・更新
   const handleAdd = () => {
     if (!inputTag.trim() || inputCredits <= 0) return;
     setRequirements((prev) => {
@@ -51,6 +70,7 @@ export default function UnitsPage() {
     setInputCredits(0);
   };
 
+  // 🔽 要件の削除
   const handleDelete = (tag: string) => {
     setRequirements((prev) => prev.filter((r) => r.tag !== tag));
   };
@@ -59,7 +79,7 @@ export default function UnitsPage() {
     <div className="p-4 space-y-6">
       <h2 className="text-2xl font-bold">単位計算ページ</h2>
 
-      {/* 要件入力 */}
+      {/* 要件入力欄 */}
       <div className="flex flex-wrap gap-2 items-center">
         <input
           placeholder="タグ名（例: 一般教養）"
@@ -83,7 +103,7 @@ export default function UnitsPage() {
         </button>
       </div>
 
-      {/* 要件リスト + 現在の取得単位 */}
+      {/* 要件リストと進捗表示 */}
       {requirements.length === 0 ? (
         <p className="text-gray-500">まだ要件が追加されていません。</p>
       ) : (

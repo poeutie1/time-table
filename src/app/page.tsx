@@ -25,9 +25,6 @@ export default function HomePage() {
       ) : (
         <p>授業データを見るには、まずログインしてください。</p>
       )}
-      <Link href="/units" className="text-blue-600 underline">
-        単位計算ページへ
-      </Link>
     </main>
   );
 }

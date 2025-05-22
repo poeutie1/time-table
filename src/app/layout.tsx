@@ -1,7 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { NavTab } from "@/components/NavTab";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,11 +26,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <nav className="flex gap-4 border-b px-4 py-2 bg-gray-100 text-sm">
+            <NavTab href="/">時間割</NavTab>
+            <NavTab href="/units">単位計算</NavTab>
+            <NavTab href="/friends">友達</NavTab>
+          </nav>
+          <main className="p-4">{children}</main>
+        </Providers>
       </body>
     </html>
   );
