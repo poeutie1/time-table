@@ -35,4 +35,5 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## 本来は授業入力欄は他の人が入れてくれたものを利用する
+# 本来は授業入力欄は他の人が入れてくれたものを利用する
+# 卒業要件も同学年の友達と共有できるようにしたい
