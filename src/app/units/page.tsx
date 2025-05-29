@@ -32,36 +32,34 @@ function TagSection({
   const [open, setOpen] = useState(false);
   const ok = current >= required;
   return (
-    <div className="border rounded p-3 mb-3 bg-white">
+    <div className="border rounded p-4 mb-4 bg-white shadow">
       <div
         className="flex justify-between items-center cursor-pointer"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen((prev) => !prev)}
       >
         <div className="font-bold text-lg">
-          {tag}：{current} / {required} 単位
+          {tag} : {current} / {required} 単位
         </div>
         <div
           className={`font-semibold ${ok ? "text-green-600" : "text-red-600"}`}
         >
-          {ok ? "OK" : "不足"}
+          {ok ? "✔︎" : "✖︎"}
         </div>
       </div>
-
       {open && (
-        <ul className="mt-2 pl-4 text-sm text-gray-700 list-disc">
-          {courses.map((c, idx) => (
-            <li key={idx}>
+        <ul className="mt-3 pl-5 text-sm text-gray-700 list-disc space-y-1">
+          {courses.map((c) => (
+            <li key={c.id} className="hover:bg-gray-100 rounded px-2 py-1">
               {c.title}（{c.credits}単位）
             </li>
           ))}
         </ul>
       )}
-
       <button
         onClick={onDelete}
-        className="text-sm text-red-500 mt-2 hover:underline"
+        className="mt-2 text-sm text-red-500 hover:underline"
       >
-        要件を削除
+        この要件を削除
       </button>
     </div>
   );
@@ -77,19 +75,17 @@ export default function UnitsPage() {
   useEffect(() => {
     fetch("/api/courses", { credentials: "include" })
       .then((res) => res.json())
-      .then((data) => setCourses(data))
-      .catch((err) => console.error("授業取得失敗:", err));
+      .then(setCourses)
+      .catch((err) => console.error("授業取得に失敗しました:", err));
   }, []);
 
-  // 初回のみ localStorage から復元
+  // 初回マウント時に localStorage から要件を復元
   useEffect(() => {
     const saved = localStorage.getItem("graduation-requirements");
-    if (saved) {
-      setRequirements(JSON.parse(saved));
-    }
+    if (saved) setRequirements(JSON.parse(saved));
   }, []);
 
-  // requirements が変わるたびに localStorage に保存
+  // 要件が変わるたびに localStorage に保存
   useEffect(() => {
     localStorage.setItem(
       "graduation-requirements",
@@ -99,74 +95,72 @@ export default function UnitsPage() {
 
   // タグごとの取得単位を集計
   const tagCreditsMap: Record<string, number> = {};
-  for (const course of courses) {
-    for (const tag of course.tags) {
-      tagCreditsMap[tag] = (tagCreditsMap[tag] ?? 0) + course.credits;
-    }
-  }
+  courses.forEach((course) => {
+    course.tags.forEach((tag) => {
+      tagCreditsMap[tag] = (tagCreditsMap[tag] || 0) + course.credits;
+    });
+  });
 
-  // 要件の追加・更新
+  // 新しい要件を追加または更新
   const handleAdd = () => {
-    const tag = inputTag.trim();
-    if (!tag || inputCredits <= 0) return;
+    const trimmedTag = inputTag.trim();
+    if (!trimmedTag || inputCredits <= 0) return;
     setRequirements((prev) => {
-      const exists = prev.find((r) => r.tag === tag);
+      const exists = prev.find((r) => r.tag === trimmedTag);
       if (exists) {
         return prev.map((r) =>
-          r.tag === tag ? { ...r, required: inputCredits } : r
+          r.tag === trimmedTag ? { ...r, required: inputCredits } : r
         );
-      } else {
-        return [...prev, { tag, required: inputCredits }];
       }
+      return [...prev, { tag: trimmedTag, required: inputCredits }];
     });
     setInputTag("");
     setInputCredits(0);
   };
 
-  // 要件の削除
+  // 要件を削除
   const handleDelete = (tag: string) => {
     setRequirements((prev) => prev.filter((r) => r.tag !== tag));
   };
 
   return (
-    <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold">単位計算ページ</h2>
-
-      {/* 要件入力欄 */}
-      <div className="flex flex-wrap gap-2 items-center">
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-extrabold mb-4">単位計算</h1>
+      <div className="flex flex-wrap gap-2 mb-6">
         <input
+          type="text"
           placeholder="タグ名（例: 一般教養）"
           value={inputTag}
           onChange={(e) => setInputTag(e.target.value)}
-          className="border px-2 py-1 rounded"
+          className="flex-1 border rounded px-3 py-2"
         />
         <input
           type="number"
           min={1}
+          placeholder="必要単位数"
           value={inputCredits}
           onChange={(e) => setInputCredits(Number(e.target.value))}
-          placeholder="必要単位数"
-          className="border px-2 py-1 rounded w-24"
+          className="w-24 border rounded px-3 py-2"
         />
         <button
           onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-1 rounded"
+          className="bg-blue-600 text-white rounded px-5 py-2 hover:bg-blue-700"
         >
-          要件追加・更新
+          要件を追加
         </button>
       </div>
-
-      {/* 要件リストと進捗表示 */}
       {requirements.length === 0 ? (
-        <p className="text-gray-500">まだ要件が追加されていません。</p>
+        <p className="text-gray-500">
+          要件がまだありません。上で追加してください。
+        </p>
       ) : (
-        <div>
+        <div className="space-y-4">
           {requirements.map((r) => (
             <TagSection
               key={r.tag}
               tag={r.tag}
               required={r.required}
-              current={tagCreditsMap[r.tag] ?? 0}
+              current={tagCreditsMap[r.tag] || 0}
               courses={courses.filter((c) => c.tags.includes(r.tag))}
               onDelete={() => handleDelete(r.tag)}
             />
